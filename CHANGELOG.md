@@ -6,36 +6,19 @@ All notable changes to this project are documented here. The project follows
 
 ## [Unreleased]
 
-- The link traffic breakdown now shows the correct source city for scrubbing traffic. Cities using the same center no longer overwrite each other's labels, Open buttons or map highlights.
-
-- Live attacks now show one scrubbing detour from the attacked city to its nearest active scrubbing center, using the links' one-way latency. Local scrubbing adds no backbone-haul line, and distributed ingress no longer produces unrelated or repeated latency messages.
-
-- The NOC no longer shows the generic attack-rate note for networks without gaming customers.
-
-- Gaming customers now scale normal-mode DDoS sizes from three times the no-gaming average with one customer to eight times with 50. Adding more gamers continues to increase attack sizes, while frequency still rises gradually toward seven attacks per week. Flood Season keeps its existing escalation.
-
-- Normal-mode DDoS attacks now vary much more in size, with a 2% chance of a much larger flood. The long-run average still scales with demand, customer level and gaming customers; Flood Season keeps its existing size distribution and escalation.
-
+- Attacks are now more common and dynamic in nature to bring some more excitement.
+- The link traffic breakdown now shows the correct source city for scrubbing traffic. Cities using the same center no longer overwrite each other's labels.
+- Live attacks now show one scrubbing detour from the attacked city to its nearest active scrubbing center, using the links' one-way latency.
 - Game server and cloud gaming customers now carry a “Gaming attracts attacks” note on their offers and customer lists, so you can see the DDoS risk before signing them.
-
 - Live attacks now show how much traffic Flowspec actually drops at the ingress routers. Routers without TCAM no longer claim to filter attacks, mixed router capabilities are called out, and Flowspec drops are counted separately from other edge filters.
-
-- Normal networks without gaming customers now average half a DDoS attack per week, with attacks ten times smaller than the ordinary baseline. Gaming customers gradually raise attack sizes and the expected rate toward seven attacks per week as your level and customer count grow. The size calculation accounts for the smaller RackNet and TeamSpooked floods so signing a gamer increases the overall average size. Flood Season keeps its separate escalation.
-
-- Hosting game servers or cloud gaming brings RackNet and TeamSpooked attacks. Both bypass Flowspec, and their size stays within one third of the ordinary attack range at your current scale.
-
-- Gaming customers bring larger, longer and more frequent DDoS attacks as your level and customer count grow, with overlapping floods, at most 14 starts in any seven days and durations up to seven days. Attacks arrive across transit and peering ports in different regions, following normal traffic shares. Attack bandwidth grows with the whole network, with no fixed bandwidth ceiling.
-
+- Hosting game servers or cloud gaming brings RackNet and TeamSpooked attacks. Both bypass Flowspec and require dedicated mitigation.
 - Flood Season keeps sending larger, more frequent attacks when you keep playing after winning or running out of time. Finishing the challenge no longer switches the floods off.
-
-- Each live attack in the NOC now shows incoming bandwidth, upstream scrubbing, edge filtering, scrubbing-center use and any traffic still leaking through in its existing status lines. Bandwidth uses the usual Gbps and Tbps units, with no duplicate summary. “After upstream scrubbing” appears only while upstream scrubbing is active. Scrubbing lines show the city, current use and compact capacity, such as “Scrubbing in Frankfurt: 30.2 Gbps / 100G”.
-
+- Each live attack in the NOC now shows incoming bandwidth, upstream scrubbing, edge filtering, scrubbing-center use and any traffic still leaking through.
 - DDoS bandwidth now adds up: upstream scrubbing, edge filters and scrubbing centers work in sequence. The NOC uses the same figures as traffic routing, including floods that cannot reach a remote center.
-
-- Attacks can now use Memcached amplification or an ACK flood. Flowspec catches the former; the latter needs other defences.
-
+- Attacks can now use Memcached amplification or an ACK flood. Flowspec catches the former; the latter need mitigation.
 - Pick a peering policy in the peering inbox: Open to all, Selective or Closed. Open accepts every request and keeps the route servers; Selective gets fewer requests but you answer them yourself and request peers at each exchange, without route servers; Closed gets no requests, and customers hear you are hard to reach. The inbox also gets a button to raise all max-prefix limits at once.
 - Brazil is slimmer: 15 small cities that sat right next to bigger ones are gone from new games, leaving 25 in Brazil. A small city no longer crowds a bigger one in the same country unless it is a cable landing or a capital. Saved games keep their POPs in those cities, and the Order and Progress scenario now asks for 15 IX.brrr ports instead of 20.
+
 ## [1.33.0] — 2026-10-27
 
 - Australia arrives: start in Sydney on hard mode. Expensive transit, a national network that keeps 45% of every broadband bill, real Australian exchanges and carriers, Adelaide, Canberra, Hobart and the South Island of New Zealand, new cables, very Australian outages and a new scenario, Fibre to the Basement. Older saves with Australian POPs are told once what changed.
