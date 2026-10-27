@@ -637,9 +637,13 @@ const FS_RES=[1,0.4,0.15];
 const DDOS_VEC={
  dns:{n:tr('DNS reflection'),fs:true},
  ntp:{n:tr('NTP amplification'),fs:true},
+ memcached:{n:tr('Memcached amplification'),fs:true},
+ ack:{n:tr('ACK flood'),fs:false},
  cldap:{n:tr('CLDAP flood'),fs:true},
  syn:{n:tr('SYN flood'),fs:true},
  http:{n:tr('HTTP flood'),fs:false},
+ racknet:{n:tr('RackNet'),fs:false,gaming:true},
+ teamspooked:{n:tr('TeamSpooked'),fs:false,gaming:true},
 };
 const MYIX_COST=80000, MYIX_MO=3000, MYIX_FEE=1500, START_CASH=200000;
 // Your own exchange's switching fabric. Bigger fabrics carry more and attract more members.
@@ -1441,7 +1445,7 @@ const initials=n=>n.name.replace(/[^A-Za-z ]/g,'').split(' ').filter(Boolean).ma
 /* ================= BUSINESSES ================= */
 const BIZ_T={
  dia:{l:tr('Enterprise DIA'),opts:[1,2,5,10],rate:600},
- game:{l:tr('Game servers'),opts:[5,10,20,40],rate:120},
+ game:{l:tr('Game servers'),gaming:true,opts:[5,10,20,40],rate:120},
  host:{l:tr('Hosting'),opts:[10,20,40,80],rate:60},
  isp:{l:tr('Downstream ISP (buys transit)'),opts:[100,200,400,800],rate:15,lv:2},
  l2vpn:{l:tr('L2VPN circuit'),opts:[1,10,40,100],rate:0,l2:true,km:1,lv:1},
@@ -1466,7 +1470,7 @@ const BIZ_T={
  pairs:{l:tr('Hundreds of fiber pairs'),opts:[1],rate:0,fiber:true,mega:true,lv:4,names:['A Hyperscaler Who Shall Not Be Named','Planet-Scale AI WAN Team','The Fiber-Hungry Giant','Project Very Long Glass']},
  esport:{l:tr('Esports world final'),opts:[400,800,1600,3200],rate:0,event:true,lv:5,names:['League of Lag Finals','Counter-Ping Major','Fortnightly World Cup','Dota Two Many Viewers','Rocket Leak Championship','Street Frighter Evo']},
  sov:{l:tr('Sovereign cloud region'),opts:[400,800,1600],rate:0,l2:true,div:true,km:0.6,lv:6,names:['Gaia-Ex Sovereign Cloud','Bundeswolke (Very Secure)','Le Cloud Souverain','Datenschutz Deluxe','Your Data Stays Here, Probably','A Cloud With a Flag on It','Data Residency Is a State of Mind']},
- cgame:{l:tr('Cloud gaming platform'),opts:[800,1600,3200],rate:45,lv:8,names:['Stadia-ium (Back Again)','GeForce Later','Ping Station Now','Luna-tick Gaming','Shadow of a Doubt Cloud PC','Input Lag Arcade','Bufferbloat Bros. Streaming']},
+ cgame:{l:tr('Cloud gaming platform'),gaming:true,opts:[800,1600,3200],rate:45,lv:8,names:['Stadia-ium (Back Again)','GeForce Later','Ping Station Now','Luna-tick Gaming','Shadow of a Doubt Cloud PC','Input Lag Arcade','Bufferbloat Bros. Streaming']},
  metav:{l:tr('Metaverse platform'),opts:[1600,3200,6400],rate:35,lv:9,names:['Meh-taverse','Second Second Life','Horizon Worlds Apart','The Oasis (Ready Player Done)','Legs Finally Shipped Inc.','Decentra-landlocked']},
  agi:{l:tr('AGI lab (allegedly)'),opts:[12800,25600],rate:0,l2:true,div:true,mega:true,km:0.4,lv:11,names:['Almost General Intelligence Inc.','Superintelligence Pending','The Lab That Said Two More Years','Paperclip Maximizer Labs','Deep Thought Two','Benevolent Overlord Research']},
  mars:{l:tr('Mars mission ground station'),opts:[100,200,400],rate:0,l2:true,lat:true,km:4,lv:13,names:['Red Planet Relay','Ares Ground Segment','Olympus Mons Uplink','Mars or Bust Mission Control','Interplanetary Ping Society','Light-Minute Logistics','RFC 1149 Avian Carriers (Mars Division)']},
@@ -1794,7 +1798,7 @@ function scenarioModal(){const wk=weekly(),h=scnHof();let best=null;try{best=JSO
 function newGame(name,home){
   S={v:1,name,asn:200000+Math.floor(_rand()*15000),home,day:0,cash:START_CASH,
     ltv:2,t1v:2,auV:1,seen:NETS.map(n=>n.id),spares:{},pops:{[home]:{day:0,bb:null,boost:0,down:0,routers:1,gen:false}},links:[],nni:[],transit:[],ixp:{},rs:{},peers:{},pni:[],caches:[],biz:[],offers:[],myIx:{},
-    done:{},inc:[],ev:{},priceMul:1,nextFail:45,nextEvent:40,usedNames:[],stats:{survived:0,incidents:0,peak:0},cnLic:{state:'none'},scrubs:[],scrubMode:'always',won:false,lost:false,neg:0,loans:[],loanOffers:[],loanStrikes:0,inbox:{items:[],down:{},tiny:{},rep:0,bot:false,log:[],seq:0},hw:{}};
+    done:{},inc:[],ev:{ddosMore:[]},ddosStarts:[],priceMul:1,nextFail:45,nextEvent:40,usedNames:[],stats:{survived:0,incidents:0,peak:0},cnLic:{state:'none'},scrubs:[],scrubMode:'always',won:false,lost:false,neg:0,loans:[],loanOffers:[],loanStrikes:0,inbox:{items:[],down:{},tiny:{},rep:0,bot:false,log:[],seq:0},hw:{}};
 }
 
 /* ================= HELPERS ================= */
@@ -2133,7 +2137,7 @@ function teOptimize(){const L=[tr('# Suggested by the optimizer from live traffi
   return L.join('\n');}
 // Ready-made RouteScripts, filled in from the live network. Players load them from the help; the AI button picks them too.
 const teUps=()=>[...new Set(S.transit.map(t=>t.net))].map(n=>({n,p:Math.min(...S.transit.filter(t=>t.net===n).map(t=>NET[n].price*regionMult(t.city)))})).sort((a,b)=>a.p-b.p);
-const teNm=n=>NET[n].name.toLowerCase(),teAtk=()=>!!(S.ev.ddos&&S.ev.ddos.until>S.day);
+const teNm=n=>NET[n].name.toLowerCase(),teAtk=()=>ddosAll().length>0;
 const teSad=()=>S.biz.some(b=>!BIZ_T[b.type].l2&&!BIZ_T[b.type].fiber&&!BIZ_T[b.type].event&&sfOf(R,b.city)<0.95);
 const TE_RECIPES=[
  {id:'shield',n:N_('Shields Up'),d:N_('For a DDoS: drop the junk at the edge and keep business customers first. It costs a little real traffic, so remove it when the attack is over.'),fit:()=>teAtk()?9:0.3,
@@ -2235,18 +2239,18 @@ function compute(){
   // ok() cannot change during one compute, so ask each exit once per network, not once per flow and rank.
   // okBy[net] lists the exits that reach it in E's order, like E.filter(e=>e.ok(net)).
   const okBy={};for(const id of NET_IDS)okBy[id]=[];
-  const ekN={};for(const e of E){e.ek=e.k+':'+e.id;ekN[e.ek]=(ekN[e.ek]||0)+1;}
+  R2.ingressPorts={};const ekN={};for(const e of E){e.ek=e.k+':'+e.id;if(e.k!=='c'){const p=R2.ingressPorts[e.ek]||(R2.ingressPorts[e.ek]={k:e.k,id:e.id,city:e.city,lab:e.lab,cap:0,traffic:0});p.cap+=e.cap;}ekN[e.ek]=(ekN[e.ek]||0)+1;}
   // dup: shares its key with another exit (a hand-edited save), so R.egDesc shows whichever pushed last.
   for(const e of E){e.desc={lab:e.lab,city:e.city,k:e.k};e.dup=ekN[e.ek]>1;e.told=false;e.hp=e.pref==='high'?0:1;e.ci=CIDX[e.city];e.cn=cnCity(e.city);e.vis=0;for(const n of e.nets||NET_IDS){const L=okBy[n];if(L&&L[L.length-1]!==e&&e.ok(n))L.push(e);}}
   for(const n of NETS){R2.reachable[n.id]=okBy[n.id].some(e=>e.rank>0);if(R2.reachable[n.id])R2.reach+=NSH[n.id];if(okBy[n.id].some(e=>e.rank>0&&e.k!=='t')){R2.nt[n.id]=1;R2.reachNT+=NSH[n.id];}}
   const cacheNets=new Set(S.caches.filter(c=>popUp(c.city)).map(c=>c.net));
   const viral=(ev.viral>day?1.25:1)*(ev.php&&ev.php>day?0.7:1);
   // Every flow has the same shape and carries what routing asks about it again and again (nj: its network's index).
-  const NN=NETS.length,flows=[],flow=(c,ci,cn,j,rem,cache,junk,bz=false)=>{const n=NETS[j];flows.push({c,n:n.id,rem,cache,junk,bz,ci,cn,ncn:!!n.cn,nj:j,nr:junk?NN:j});};
+  const NN=NETS.length,flows=[],flow=(c,ci,cn,j,rem,cache,junk,bz=false)=>{const n=NETS[j],f={c,n:n.id,rem,cache,junk,bz,ci,cn,ncn:!!n.cn,nj:j,nr:junk?NN:j};flows.push(f);return f;};
   // Customer demand per city, added up in S.biz order (what filtering S.biz for each city would give).
   const bizBw={};for(const b of S.biz){const T=BIZ_T[b.type];if(!T.l2&&!T.fiber&&(!T.event||eventLive(b))){const v=bizBw[b.city];bizBw[b.city]=(v===undefined?0:v)+b.bw;}}
   // Traffic shares by network index, and their sums, for each share table (and with Russia's throttle).
-  const shArr=new Map(),shSum=new Map(),DEMTO=new Float64Array(NN),loc=scnRule('local'),HAUL=[];R2.haul=[];
+  const shArr=new Map(),shSum=new Map(),DEMTO=new Float64Array(NN),loc=scnRule('local'),scrubRoom={},atkBy={},junkGroups=[],bhCities=new Set(ddosAll().filter(a=>a.bh).map(a=>a.city));R2.haul=[];R2.ddos=[];for(const a of ddosAll())for(const part of ddosSlices(a))(atkBy[part.city]||(atkBy[part.city]=[])).push(part);
   for(const c of Object.keys(S.pops)){
     const p=S.pops[c],ci=CIDX[c],cn=cnCity(c),SH=cn?NSH_CN:ruCity(c)?NSH_RU:CITY[c].kr&&S.krExit?NSH_KRX:NSH;const eye=(p.bb?p.bb.d:0)*viral*(cn&&ev.golden>day?1.4:1);const biz=bizBw[c]??0;const d0=eye+biz;
     // Goggle video is throttled in Russia (#70): people there get half of it, so they ask for half. It is not
@@ -2255,26 +2259,18 @@ function compute(){
     const tt=sm[+ru]||(sm[+ru]=[NETS.reduce((t,n,j)=>t+sa[j]*thr(n.id),0),NETS.reduce((t,n,j)=>t+sa[j],0)]),lf=loc?NETS.reduce((t,n,j)=>t+(R2.reachable[n.id]?sa[j]*thr(n.id):0),0)/(tt[0]||1):1,d=d0*tt[0]/(tt[1]||1)*lf;
     R2.cityEye[c]=eye;R2.cityDem[c]=d;R2.citySrv[c]=0;R2.demand+=d;
     for(let j=0;j<NN;j++)DEMTO[j]=(DEMTO[j]||0)+d0*sa[j]*thr(NETS[j].id);
-    if(!popUp(c))continue;
     // A shaped attack: `rtbh` is the player pulling the plug on the victim IP (junk gone, customer dark too);
     // `edge` is the crude RouteScript `blackhole ddos` filter (junk gone, 10% of real traffic with it). Flowspec
     // (a standing licence) and a scrubbing center each knock the flood down before it reaches the sim.
-    const atk=ev.ddos&&ev.ddos.city===c&&ev.ddos.until>day?ev.ddos:null;
-    const rtbh=!!(atk&&atk.bh), edge=!!(atk&&TRX&&TRX.blackhole&&!rtbh);
+    const attacks=atkBy[c]||[],rtbh=bhCities.has(c),edge=!!(attacks.length&&TRX&&TRX.blackhole&&!rtbh);
     let dd=0;
-    if(atk&&!rtbh){let mult=1;const en=atk.entry||{};
-      if(DDOS_VEC[atk.vec]&&DDOS_VEC[atk.vec].fs){const cap=fsAt(atk.city);if(cap)mult=Math.min(mult,FS_RES[cap]);}
-      if(en.k==='t'){const t=S.transit.find(x=>x.id===en.id);if(t&&t.clean)mult=Math.min(mult,0.1);}
-      if(atk.ixbh&&hasIxAt(atk.city))mult=Math.min(mult,0.5);
-      if(edge)mult=0;
-      // Scrubbing is used when it beats the edge tools; floods for a center in another city are hauled after the circuits below.
-      const sp=edge?null:scrubPlan(atk);
-      if(sp&&scrubIdeal(sp)<atk.gbps*mult){dd=scrubIdeal(sp);for(const x of sp.parts)if(x.city!==c)HAUL.push({c,to:x.city,tier:x.tier,a:x.a,v:d*0.1});}
-      else dd=atk.gbps*mult;
-      if(en.k==='p'){const p=S.pni.find(x=>x.id===en.id);if(p&&p.sacrif)dd=Math.min(dd,liveCap(pniG(p),p.city,p.site,p.n)*0.9);}}
+    for(const atk of attacks){const m=ddosMitigation(atk,{},bhCities.has((atk.parent||atk).city),false);R2.ddos.push(m);dd+=m.leak;
+      const group={m,flows:[]};junkGroups.push(group);
+      if(atk.entries?.length){for(const q of m.ingress){const f=flow(c,ci,cn,0,q.g,false,true);f.pin=q.entry.k+':'+q.entry.id;group.flows.push({f,share:m.leak>0?q.g/m.leak:0});}}
+      else for(let j=0;j<NN;j++)group.flows.push({f:flow(c,ci,cn,j,m.leak*NSH[NETS[j].id],false,true),share:NSH[NETS[j].id]});}
+    if(!popUp(c)){for(const m of R2.ddos.filter(m=>m.attack.city===c))m.offline=true;continue;}
     const bh=rtbh||edge;
-    if(dd>0)for(let j=0;j<NN;j++)flow(c,ci,cn,j,dd*NSH[NETS[j].id],false,true);
-    if(edge)R2.teBlack+=atk.gbps*0.15+d*0.1;if(rtbh)R2.teBlack+=atk.gbps+d;
+    if(edge)R2.teBlack+=attacks.reduce((n,a)=>n+a.gbps,0)+d*0.1;if(rtbh)R2.teBlack+=attacks.reduce((n,a)=>n+a.gbps,0)+d;
     R2.cityBlocked=R2.cityBlocked||{};
     const mtuH=ev.pmtud&&ev.pmtud.until>day?ev.pmtud:null,kr=CITY[c].kr;
     for(let j=0;j<NN;j++){const n=NETS[j],a=(loc&&!R2.reachable[n.id]?0:d0)*sa[j]*thr(n.id)*(rtbh?0:edge?0.9:1)*(mtuH&&mtuH.net===n.id?mtuH.f:1)*(kr&&ev.krroute>day&&n.id==='fbk'?0.8:1);if(a<=0)continue;
@@ -2337,18 +2333,28 @@ function compute(){
     if((b.reqs||[]).includes('diverse')){const k=b.city+'>'+b.city2;R2.div[b.id]=divMemo[k]??(divMemo[k]=disjointI(b.city,b.city2));}}
   /* A flood for a scrubbing center elsewhere rides the backbone there, with the victim's own traffic (#117).
      What the links cannot carry is not scrubbed and lands on the city after all. */
-  for(const H of HAUL){const A=H.c,B=H.to,Ai=CIDX[A],Bi=CIDX[B];let h=0,ms=null;
-    if(popUp(A)&&popUp(B)&&SPD[A]&&SPD[A][Bi]<Infinity){const {path,ni}=walkI(SPP[A],Ai,Bi);let room=Infinity;for(const l of path)room=Math.min(room,l.res);for(const i of ni)if(HAS[i])room=Math.min(room,NRES[i]);
-      const want=H.a+H.v,take=Math.max(0,Math.min(want,room));h=want>0?H.a*take/want:0;ms=path.reduce((x,e)=>x+e.lat,0)*2;
-      const ek='scrub:'+B;R2.egDesc[ek]={lab:labOf(N_('Attack hauled to scrubbing in {city}'),'city',CITY[B].name),city:A,k:'l2'};
-      for(const i of ni)if(HAS[i])nodeTake(i,take);for(const l of path){l.res-=take;l.ld+=take;carry(l,ek,NN,Ai,take);}}
-    R2.haul.push({city:A,to:B,tier:H.tier,a:H.a,h,ms});const left=(H.a-h)*0.85;if(left>1e-6)for(let j=0;j<NN;j++)flow(A,Ai,cnCity(A),j,left*NSH[NETS[j].id],false,true);}
+  const scrubNear=new Map();
+  for(const m of R2.ddos){const atk=m.attack,A=atk.city,Ai=CIDX[A];
+    m.sp=!m.offline&&m.leak>0?scrubPlan(atk,m.leak,scrubRoom,(x,want)=>{const B=x.city,Bi=CIDX[B];if(A===B)return want;let h=0,ms=null;
+      if(popUp(A)&&popUp(B)&&SPD[A]&&SPD[A][Bi]<Infinity){const {path,ni}=walkI(SPP[A],Ai,Bi);let room=Infinity;for(const l of path)room=Math.min(room,l.res);for(const i of ni)if(HAS[i])room=Math.min(room,NRES[i]);
+        const v=R2.cityDem[A]*0.1*want/Math.max(m.leak,1)/atkBy[A].length,total=want+v,take=Math.max(0,Math.min(total,room));h=total>0?want*take/total:0;ms=path.reduce((n,e)=>n+e.lat,0)*2;
+        // Sources sharing a center need separate labels in link breakdowns and map highlights.
+        const ek='scrub:'+A+'>'+B;R2.egDesc[ek]={lab:labOf(N_('Attack hauled to scrubbing in {city}'),'city',CITY[B].name),city:A,k:'l2'};
+        for(const i of ni)if(HAS[i])nodeTake(i,take);for(const l of path){l.res-=take;l.ld+=take;carry(l,ek,NN,Ai,take);}}
+      R2.haul.push({city:A,to:B,tier:x.tier||0,a:want,h,ms,attack:atk.id});return h;}):null;
+    if(m.sp){m.leak=m.sp.leak;
+      // The card describes the victim's nearest center, separately from distributed ingress hauling above.
+      const c=(atk.parent||atk).city;let near=scrubNear.get(c);if(near===undefined){near=null;
+        for(const x of S.scrubs)if(popUp(x.city)&&SPD[c]&&SPD[c][CIDX[x.city]]<Infinity){const ms=c===x.city?0:walkI(SPP[c],CIDX[c],CIDX[x.city]).path.reduce((n,e)=>n+e.lat,0);if(!near||ms<near.ms)near={city:x.city,ms};}
+        scrubNear.set(c,near);}m.near=near;}}
+  for(const group of junkGroups)for(const q of group.flows)q.f.rem=group.m.offline?0:group.m.leak*q.share;
   const TE=!!(S.te&&S.te.on),TR=teRules();R2.teMoved=0;const teCache=new Map(),SPILL=TR&&TR.spill?TR.spill:1;
   const altPath=(src,dst,base)=>{const key=src*NC+dst,c0=teCache.get(key);
     if(c0===false)return null;if(c0&&c0.path.every(l=>l.res>1e-3)&&c0.ni.every(i=>!HAS[i]||NRES[i]>1e-3))return c0;
     const {D,P}=dijkstra(adj,src,wW,(v,e)=>e.res<=1e-3||(HAS[v]&&NRES[v]<=1e-3),dst);
     if(D[dst]===Infinity||D[dst]>2*base+60){teCache.set(key,false);return null;}
     const Q=walkI(P,src,dst);teCache.set(key,Q);return Q;};
+  const ingressE={};for(const e of E)(ingressE[e.ek]||(ingressE[e.ek]=[])).push(e);
   const base=e=>e.pref==='low'?4:e.rank;
   // LOCAL_PREF on an upstream moves it ahead of or behind the other transits, never ahead of peering (#96).
   const eff=(e,n)=>{let r=base(e);if(TR){if(e.k==='t'&&TR.up[e.net])r=TR.up[e.net]==='prefer'?2.9:3.5;if(e.prep)r=4.4;if(e.k!=='c'&&TR.drain.has(e.city))r=4.6;const o=TR.net[n];if(o){if(o.prefer===e.k)r=0.5;else if(o.avoid===e.k)r=4.5;}}return r;};
@@ -2374,7 +2380,7 @@ function compute(){
     const ek=e.ek,nr=f.nr,ci=f.ci;if(!e.told||e.dup){R2.egDesc[ek]=e.desc;e.told=true;}
     for(const l of path){l.res-=amt;l.ld+=amt;carry(l,ek,nr,ci,amt);}
     e.used+=amt;f.rem-=amt;
-    if(!f.junk){let ok=amt;const cf=f.cn,ce=e.cn,cn=f.ncn;
+    if(!f.junk){if(e.k!=='c')R2.ingressPorts[ek].traffic+=amt;let ok=amt;const cf=f.cn,ce=e.cn,cn=f.ncn;
       if(cf!==ce||(cf&&!cn)||(!cf&&cn&&e.k==='t')){const prem=(e.k==='t'&&e.prem)||(e.k==='p'&&e.pnc)||path.some(x=>x.links&&x.links.some(y=>y.premium));const loss=prem?0.03:(ev.gfw>day?0.35:0.2);R2.gfwLost+=amt*loss;R2.gfwCross+=amt;ok=amt*(1-loss);}
       SRV[f.ci]+=ok;R2.served+=ok;if(f.bz)R2.bizSrv[f.c]+=ok;if(e.rank<=2)R2.peered+=ok;if(e.k==='t'){const m=R2.tNet[e.id]||(R2.tNet[e.id]={});m[f.n]=(m[f.n]||0)+ok;
         // Backhaul to transit: users notice the round trip to the exit. Up to 20 ms (about 1,500 km) is free, then
@@ -2406,8 +2412,9 @@ function compute(){
     // Index loops in here: plain for…of allocates an iterator per loop until V8 has optimised compute().
     for(let fi=0,FN=flows.length;fi<FN;fi++){f=flows[fi];
       if(f.rem<=1e-6||(rank===0&&!f.cache)||(pass&&!pass(f)))continue;
-      const lst=byRank[f.n][rank];if(!lst)continue;
       Dv=SDi[f.ci];Pv=SPi[f.ci];PP=walked[f.ci]||(walked[f.ci]=[]);vis++;
+      if(f.pin){for(const e of ingressE[f.pin]||[])if(base(e)===rank&&e.used<e.cap&&Dv[e.ci]<Infinity)send(e,f.rem);continue;}
+      const lst=byRank[f.n][rank];if(!lst)continue;
       /* Groups are tried nearest first, preferred exits before the rest, in the order a stable sort of the usable
          exits gives. Exits only fill up once tried, so the usable ones stay the same until then. Nearly every flow
          fits in its first group: find that one with a scan (nothing is visited yet), and sort only what is left
@@ -2532,10 +2539,15 @@ function sanitize(s){
   if(!Array.isArray(s.scrubs))s.scrubs=s.scrubAt&&isCity(s.scrubAt)?[{city:s.scrubAt,tier:s.scrubTier}]:[];delete s.scrubAt;delete s.scrubTier;
   {const seen=new Set();s.scrubs=s.scrubs.filter(x=>x&&typeof x==='object'&&isCity(x.city)&&s.pops[x.city]&&!seen.has(x.city)&&seen.add(x.city)).map(x=>({city:x.city,tier:int(x.tier,0,SCRUB_TIERS.length-1,0)}));}
   s.scrubMode=s.scrubMode==='ondemand'?'ondemand':'always';
-  if(s.ev&&s.ev.ddos){const a=s.ev.ddos;
-    if(!a||typeof a!=='object'||!isCity(a.city)||!own(DDOS_VEC,a.vec))delete s.ev.ddos;
-    else{a.gbps=num(a.gbps,2);a.until=num(a.until,s.day);a.bh=!!a.bh;a.ixbh=!!a.ixbh;a.start=num(a.start,s.day);
-      if(!a.entry||typeof a.entry!=='object')a.entry={k:'edge',lab:''};else{a.entry.lab=String(a.entry.lab||'').slice(0,60);a.entry.id=a.entry.id==null?undefined:String(a.entry.id).slice(0,40);}}}
+  // Keep the legacy primary attack so old saves and imports remain compatible; additional floods overlap it.
+  const repairAttack=a=>{if(!a||typeof a!=='object'||!isCity(a.city)||!s.pops[a.city]||!own(DDOS_VEC,a.vec))return null;
+    a.id=sid(a.id);a.gbps=Math.max(0,num(a.gbps,2));a.until=num(a.until,s.day);a.bh=!!a.bh;a.ixbh=!!a.ixbh;a.start=Math.max(0,Math.min(s.day,num(a.start,s.day)));a.until=Math.min(a.until,a.start+7);
+    if(Array.isArray(a.entries)){a.entries=a.entries.filter(en=>en&&['t','ix','p'].includes(en.k)&&isCity(en.city)&&typeof en.id==='string'&&Number.isFinite(+en.share)&&+en.share>0).slice(0,3000).map(en=>({k:en.k,id:en.id.slice(0,40),city:en.city,lab:String(en.lab||'').slice(0,60),share:+en.share}));const sum=a.entries.reduce((n,en)=>n+en.share,0);if(Number.isFinite(sum)&&sum>0)for(const en of a.entries)en.share/=sum;else delete a.entries;}else delete a.entries;
+    a.sla=Array.isArray(a.sla)?a.sla.filter(x=>typeof x==='string').slice(0,s.biz.length):[];
+    if(!a.entry||typeof a.entry!=='object')a.entry={k:'edge',lab:''};else{a.entry.lab=String(a.entry.lab||'').slice(0,60);a.entry.id=a.entry.id==null?undefined:String(a.entry.id).slice(0,40);}return a;};
+  const attacks=[s.ev.ddos,...(Array.isArray(s.ev.ddosMore)?s.ev.ddosMore:[])].map(repairAttack).filter(Boolean).slice(0,14);
+  if(attacks.length)s.ev.ddos=attacks[0];else delete s.ev.ddos;s.ev.ddosMore=attacks.slice(1);
+  s.ddosStarts=(Array.isArray(s.ddosStarts)?s.ddosStarts:attacks.map(a=>a.start)).filter(d=>typeof d==='number'||typeof d==='string').map(Number).filter(d=>Number.isFinite(d)&&d>s.day-7&&d<=s.day).sort((a,b)=>a-b).slice(-14);
   s.auV=s.auV===1?1:0;if(s.auNews!==true)delete s.auNews;
   if(s.te){if(typeof s.te!=='object')s.te=null;else{s.te.on=!!s.te.on;s.te.script=typeof s.te.script==='string'?s.te.script.slice(0,4000):'';}}
   return s;}
@@ -2623,6 +2635,7 @@ function bizSfOf(r,c){const d=r.bizDem&&r.bizDem[c];return teRules()&&teRules().
 function bCities(o){return o.sites?o.sites.slice():[o.city,o.city2].filter(Boolean);}
 function bHas(o){return bCities(o).every(c=>S.pops[c]);}
 function eventLive(b){return BIZ_T[b.type].event&&S.day>=b.start&&S.day<b.start+b.dur;}
+function bRisk(b){return BIZ_T[b.type]?.gaming?`<div class="meta">⚠️ ${tr('Gaming attracts attacks')}</div>`:'';}
 function bTerms(o){const T=BIZ_T[o.type];
   if(T.event){const live=S.day>=o.start;return tr('{bw} extra for {d} days, {when} · pays {fee} when it is over',{bw:fmtG(o.bw),d:o.dur,when:live?tr('day {n} of {d}',{n:S.day-o.start+1,d:o.dur}):tr('starting in {n}d',{n:o.start-S.day}),fee:fmt$(o.fee)});}
   if(T.sdwan)return tr('{n} sites: {list} · {bw} per site · {price}/mo',{n:o.sites.length,list:o.sites.map(c=>CITY[c].name).join(', '),bw:fmtG(o.bw),price:fmt$(o.bw*o.rate)});
@@ -2753,59 +2766,83 @@ function lagsN(){const o=[];for(const t of S.transit)if((t.n||1)>=2&&!(t.down>S.
   for(const p of S.pni)if((p.n||1)>=2)o.push({k:'p',id:p.id,o:p,n:p.n,lab:tr('PNI LAG with {name} in {city}',{name:NET[p.net].name,city:CITY[p.city].name})});
   for(const x in S.ixp){const n=(S.ixn||{})[x]||1;if(n>=2&&!S.myIx[x])o.push({k:'ix',id:x,n,lab:ixNamesCity(x)?tr('{ix} LAG',{ix:ixName(x)}):tr('{ix} LAG in {city}',{ix:ixName(x),city:CITY[ixCity(x)].name})});}return o;}
 // Where the junk comes in: one of the city's live uplinks, or just "the edge" if it has none yet.
+// The primary slot remains compatible with older saves; every system uses the full live set.
+function ddosAll(s=S,live=true){return [s.ev.ddos,...(s.ev.ddosMore||[])].filter(a=>a&&(!live||a.until>s.day));}
+const ddosFind=id=>ddosAll().find(a=>id===undefined||a.id===id);
+function ddosDrop(a){const left=ddosAll(S,false).filter(x=>x!==a);S.ev.ddos=left[0]||null;S.ev.ddosMore=left.slice(1);}
+function ddosExpire(){for(const a of ddosAll(S,false))if(a.until<=S.day||!S.pops[a.city]){ddosDone(a);ddosDrop(a);}}
+function ddosEntries(){const ports=Object.values(R.ingressPorts||{}).filter(p=>p.cap>0),busy=ports.some(p=>p.traffic>1e-6),weight=p=>busy?p.traffic:p.cap,total=ports.reduce((n,p)=>n+weight(p),0);
+  return total>0?ports.filter(p=>weight(p)>0).map(p=>({k:p.k,id:p.id,city:p.city,lab:p.lab,share:weight(p)/total})):[];}
+function ddosSlices(a){if(!a.entries?.length)return [a];const groups={};
+  for(const en of a.entries){const c=S.pops[en.city]?en.city:a.city;(groups[c]||(groups[c]=[])).push(en);}
+  return Object.entries(groups).map(([city,entries])=>({...a,parent:a,city,entries,gbps:a.gbps*entries.reduce((n,en)=>n+en.share,0)}));}
+const ddosCities=a=>[...new Set([a.city,...(a.entries||[]).map(en=>en.city)])].filter(c=>S.pops[c]);
+const ddosHasIx=a=>ddosCities(a).some(hasIxAt);
+const ddosSf=a=>Math.min(1,...ddosCities(a).map(c=>sfOf(R,c)));
+function ddosReport(a){const ms=(R.ddos||[]).filter(m=>m.attack===a||m.attack.parent===a);if(!ms.length)return ddosMitigation(a);
+  const parts={};for(const m of ms)for(const x of m.sp?.parts||[]){const q=parts[x.city]||(parts[x.city]={city:x.city,tier:x.tier,a:0,cleaned:0});q.a+=x.a;q.cleaned+=x.cleaned;}
+  return {attack:a,blackhole:ms.some(m=>m.blackhole),upstream:ms.some(m=>m.upstream),reaching:ms.reduce((n,m)=>n+m.reaching,0),flowspec:ms.reduce((n,m)=>n+m.flowspec,0),fsMissing:ms.some(m=>m.fsMissing),filtered:ms.reduce((n,m)=>n+m.filtered,0),sp:Object.keys(parts).length?{parts:Object.values(parts)}:null,near:ms.find(m=>m.near)?.near||null,leak:ms.reduce((n,m)=>n+m.leak,0)};}
 function ddosEntry(c){const o=[];
   for(const t of S.transit)if(t.city===c&&!(t.down>S.day))o.push({k:'t',id:t.id,lab:tr('{net} transit',{net:NET[t.net].name})});
   for(const x of ixIdsIn(c))if(S.ixp[x]!==undefined)o.push({k:'ix',id:x,lab:tr('{ix} peering',{ix:ixName(x)})});
   for(const p of S.pni)if(p.city===c)o.push({k:'p',id:p.id,lab:tr('PNI with {net}',{net:NET[p.net].name})});
   return o.length?pick(o):{k:'edge',lab:''};}
-// Flowspec capability of the router in a city: 0 none, 1 basic, 2 full. The flood is filtered where the
-// victim POP's own router has the TCAM for it.
+// Flowspec capability at each ingress POP: 0 none, 1 basic, 2 full.
 const fsAt=c=>{const p=S.pops[c];return p?(RG[p.rgen||0].fs||0):0;};
-// Scrubbing residual for an attack: clean up to the center's capacity (to 15%), overflow leaks. On-demand
+// Scrubbing removes attack traffic up to the center's capacity; overflow leaks. On-demand
 // does nothing for the first couple of days while traffic is being diverted.
-function scrubEngaged(atk){return hasScrub()&&(S.scrubMode==='always'||(S.day-(atk.start||S.day))>=SCRUB_DELAY);}
+function scrubEngaged(atk){return hasScrub()&&(S.scrubMode==='always'||(S.day-(atk.start??S.day))>=SCRUB_DELAY);}
 // Several centers (#117): the flood goes to the nearest working one, and what it cannot take spills to the next.
 // A center in another city only helps if the backbone can carry the flood there; routing works that out.
-const scrubFar=c=>{const a=S.ev&&S.ev.ddos;return a&&a.until>S.day&&a.city===c&&(R.haul||[]).find(q=>q.city===c&&q.ms!==null&&q.ms>=SCRUB_FAR_MS)||null;};
-function scrubPlan(atk){if(!scrubEngaged(atk))return null;const c=atk.city;let g=atk.gbps||0;const parts=[];
-  for(const x of S.scrubs.filter(x=>popUp(x.city)&&(x.city===c||pathExists(c,x.city))).sort((a,b)=>(a.city===c?0:kmBetween(c,a.city))-(b.city===c?0:kmBetween(c,b.city)))){if(g<=0)break;const a=Math.min(g,SCRUB_TIERS[x.tier||0].g);parts.push({city:x.city,tier:x.tier||0,a});g-=a;}
+const scrubFar=c=>ddosAll().some(a=>ddosCities(a).includes(c))&&(R.haul||[]).find(q=>q.city===c&&q.ms!==null&&q.ms>=SCRUB_FAR_MS)||null;
+function scrubPlan(atk,g=atk.gbps||0,room={},take=null){if(!scrubEngaged(atk))return null;const c=atk.city;const parts=[];
+  for(const x of S.scrubs.filter(x=>popUp(x.city)&&(x.city===c||pathExists(c,x.city))).sort((a,b)=>(a.city===c?0:kmBetween(c,a.city))-(b.city===c?0:kmBetween(c,b.city)))){if(g<=0)break;const cap=SCRUB_TIERS[x.tier||0].g,a=Math.min(g,room[x.city]??cap);if(a<=0)continue;const cleaned=take?take(x,a):a;room[x.city]=(room[x.city]??cap)-cleaned;parts.push({city:x.city,tier:x.tier||0,a,cleaned});g-=cleaned;}
   return parts.length?{parts,leak:g}:null;}
-// What still lands on the city if every haul gets through: 15% of what is scrubbed, plus whatever no center can take.
-const scrubIdeal=p=>p?p.parts.reduce((s,x)=>s+x.a*0.15,0)+p.leak:Infinity;
+// One accounting pipeline for routing and the NOC: upstream -> edge -> scrubbing -> leakage.
+function ddosMitigation(a,room={},blackhole=a.bh,plan=true){const entries=a.entries?.length?a.entries:[{...(a.entry||{}),share:1}],total=entries.reduce((n,en)=>n+en.share,0),ingress=[];
+  let upstream=false,reaching=0,g=0,flowspec=0,fsMissing=false;
+  for(const en of entries){const t=en.k==='t'?S.transit.find(x=>x.id===en.id):null,p=en.k==='p'?S.pni.find(x=>x.id===en.id):null,clean=!!(t&&t.clean);
+    upstream=upstream||clean;let part=blackhole?0:a.gbps*en.share/total*(clean?0.1:1);reaching+=part;
+    if(DDOS_VEC[a.vec]?.fs){const cap=fsAt(S.pops[en.city]?en.city:a.city),before=part;part*=FS_RES[cap];flowspec+=before-part;if(cap===0&&before>0)fsMissing=true;}
+    if(a.ixbh&&hasIxAt(a.city))part*=0.5;
+    if(p&&p.sacrif)part=Math.min(part,liveCap(pniG(p),p.city,p.site,p.n)*0.9);
+    if(teRules()?.blackhole&&!blackhole)part=0;
+    g+=part;ingress.push({entry:en,g:part});}
+  const filtered=reaching-g,sp=plan&&g>0?scrubPlan(a,g,room):null;
+  return {attack:a,blackhole,upstream,reaching,flowspec,fsMissing,filtered,ingress,sp,leak:sp?sp.leak:g};}
 // The NOC's live attack view: what is hitting you, what each tool would do about it right now, and the buttons.
-function ddosPanel(){
-  const a=S&&S.ev&&S.ev.ddos;if(!a||a.until<=S.day||!S.pops[a.city])return '';
-  const V=DDOS_VEC[a.vec]||{n:'?',fs:false},cap=fsAt(a.city),model=RG[(S.pops[a.city].rgen||0)].n,en=a.entry||{};
-  const cleanT=en.k==='t'?S.transit.find(x=>x.id===en.id):null, sacP=en.k==='p'?S.pni.find(x=>x.id===en.id):null;
-  let mult=1;
-  if(V.fs&&cap)mult=Math.min(mult,FS_RES[cap]);
-  if(cleanT&&cleanT.clean)mult=Math.min(mult,0.1);
-  if(a.ixbh&&hasIxAt(a.city))mult=Math.min(mult,0.5);
-  const sp=scrubPlan(a),useS=!!sp&&scrubIdeal(sp)<a.gbps*mult,hl=x=>(R.haul||[]).find(q=>q.city===a.city&&q.to===x.city);
-  let land=a.bh?0:useS?sp.parts.reduce((t,x)=>{const q=x.city===a.city?null:hl(x);return t+x.a*0.15+(q?(q.a-q.h)*0.85:0);},sp.leak):a.gbps*mult;
-  if(sacP&&sacP.sacrif)land=Math.min(land,liveCap(PORT[sacP.tier].g,sacP.city,sacP.site,sacP.n)*0.9);
-  land=Math.round(land);
-  const fsLine=!V.fs?'— '+tr('Flowspec cannot catch an {vec} (application layer)',{vec:esc(V.n)})
-    :cap>=2?'✓ '+tr('Flowspec on your {model} is dropping {vec} at the edge',{model:esc(model),vec:esc(V.n)})
-    :cap===1?'~ '+tr('Flowspec on your {model} trims {vec}, but its TCAM is small',{model:esc(model),vec:esc(V.n)})
-    :'— '+tr('Your {model} here has no Flowspec TCAM',{model:esc(model)});
-  const scrOne=x=>{const T=SCRUB_TIERS[x.tier],q=x.city===a.city?null:hl(x);
-      return q&&q.h<q.a-0.5?'~ '+tr('Your backbone can only haul {g} of it to {city}: the rest is not scrubbed',{g:fmtG(q.h),city:esc(CITY[x.city].name)})
-        :q&&q.ms!==null?'✓ '+tr('{tier} scrubbing in {city} is cleaning it, hauled over your backbone (+{ms} ms)',{tier:T.n,city:esc(CITY[x.city].name),ms:Math.round(q.ms)})
-        :'✓ '+tr('{tier} scrubbing in {city} is cleaning it',{tier:T.n,city:esc(CITY[x.city].name)});};
+function ddosPanel(){return S?ddosAll().filter(a=>S.pops[a.city]).map(ddosOne).join(''):'';}
+function ddosOne(a){
+  const V=DDOS_VEC[a.vec]||{n:'?',fs:false},en=a.entry||{};
+  const sacP=en.k==='p'?S.pni.find(x=>x.id===en.id):null;
+  const m=ddosReport(a),sp=m.sp,hl=x=>{const qs=(R.haul||[]).filter(q=>q.to===x.city&&q.attack===a.id);return qs.length?{a:qs.reduce((n,q)=>n+q.a,0),h:qs.reduce((n,q)=>n+q.h,0)}:null;};
+  const landLine=m.blackhole?'~ '+tr('Blackholed: the junk is gone, and so is {city}. The attack got what it wanted.',{city:esc(CITY[a.city].name)})
+    :m.upstream?'✓ '+tr('After upstream scrubbing: {g}',{g:fmtG(m.reaching)}):'';
+  const fsLine=!V.fs?'— '+tr('Flowspec cannot catch {vec}',{vec:esc(V.n)})
+    :m.flowspec<=1e-6?'— '+tr('No Flowspec filtering: ingress routers have no TCAM')
+    :m.fsMissing?'~ '+tr('Flowspec dropping: {g}; some ingress routers have no TCAM',{g:fmtG(m.flowspec)})
+    :'✓ '+tr('Flowspec dropping: {g}',{g:fmtG(m.flowspec)});
+  const used=c=>(R.ddos||[m]).reduce((n,q)=>n+(q.sp?.parts||[]).filter(x=>x.city===c).reduce((t,x)=>t+x.cleaned,0),0);
+  const scrOne=x=>{const T=SCRUB_TIERS[x.tier],q=hl(x),total=used(x.city);
+      return (x.cleaned>1e-6?'✓ ':'~ ')+tr('Scrubbing in {city}: {used} / {capacity}',{city:esc(CITY[x.city].name),used:fmtG(total),capacity:T.n})
+        +(total>x.cleaned+1e-6?' · '+tr('This attack: {g}',{g:fmtG(x.cleaned)}):'')
+        +(q&&q.h<q.a-0.5?'<br>~ '+tr('Your backbone can only haul {g} of it to {city}: the rest is not scrubbed',{g:fmtG(q.h),city:esc(CITY[x.city].name)}):'');};
   const scrLine=!hasScrub()?'— '+tr('No scrubbing center')
-    :!scrubEngaged(a)?'… '+tr('On-demand scrubbing diverting, live in {n}d',{n:Math.max(1,SCRUB_DELAY-(S.day-(a.start||S.day)))})
-    :!sp?'— '+tr('No scrubbing center')
-    :sp.parts.map(scrOne).join('<br>')+(sp.leak>0.5?'<br>~ '+tr('Your scrubbing centers are full: {g} leaks past',{g:fmtG(sp.leak)}):'');
-  const entryLine=cleanT&&cleanT.clean?'✓ '+tr('{net} is scrubbing it upstream (clean-pipe)',{net:esc(NET[cleanT.net].name)})
-    :sacP&&sacP.sacrif?'✓ '+tr('Contained on your sacrificial {net} PNI',{net:esc(NET[sacP.net].name)}):'';
+    :!scrubEngaged(a)?'… '+tr('On-demand scrubbing diverting, live in {n}d',{n:Math.max(1,SCRUB_DELAY-(S.day-(a.start??S.day)))})
+    :!sp?'— '+(m.leak<=1e-6?tr('No scrubbing needed after edge mitigation'):tr('Scrubbing centers unavailable or at capacity'))
+    :sp.parts.map(scrOne).join('<br>');
+  const haulLine=m.near&&m.near.ms>0&&sp?.parts.some(x=>x.cleaned>1e-6)?'✓ '+tr('Scrubbing traffic hauled over your backbone: {city} → {to} (+{ms} ms)',{city:esc(CITY[a.city].name),to:esc(CITY[m.near.city].name),ms:m.near.ms.toFixed(1)}):'';
+  const entryLine=sacP&&sacP.sacrif?'✓ '+tr('Contained on your sacrificial {net} PNI',{net:esc(NET[sacP.net].name)}):'';
   let h=`<div class="inc" style="background:#FFE2E6;border:1px solid #FF8A9A">
     <div class="nm">🚨 ${tr('Live attack: {city}',{city:esc(CITY[a.city].name)})}</div>
     <div class="meta">${tr('{size} · {vec}{entry} · {n}d left',{size:fmtG(a.gbps),vec:esc(V.n),entry:a.entry&&a.entry.lab?' · '+esc(a.entry.lab):'',n:a.until-S.day})}</div>
-    <div class="meta"><b>${a.bh?tr('Blackholed: the junk is gone, and so is {city}. The attack got what it wanted.',{city:esc(CITY[a.city].name)}):tr('Reaching your network: {g}',{g:fmtG(land)})}</b></div>
+    ${landLine?`<div class="meta"><b>${landLine}</b></div>`:''}
+    ${m.blackhole?'':`<div class="meta">${fsLine}</div>${entryLine?`<div class="meta">${entryLine}</div>`:''}
+    ${m.filtered-m.flowspec>1e-6?`<div class="meta">✓ ${tr('Edge filters dropping: {g}',{g:fmtG(m.filtered-m.flowspec)})}</div>`:''}
     <div class="meta">${scrLine}</div>
-    <div class="meta">${fsLine}</div>${entryLine?`\n    <div class="meta">${entryLine}</div>`:''}
-    <div class="btns">${a.bh?btn(tr('Stop blackholing'),'unrtbh',{},'ghost sm'):btn(tr('Blackhole the target (RTBH)'),'rtbh',{},'red sm')}${hasIxAt(a.city)&&!a.bh?btn(a.ixbh?tr('IX blackhole on ✓'):tr('IX blackhole <small>~half honour it</small>'),'ixbh',{},a.ixbh?'green sm':'sm'):''}${btn(tr('HackBack 3000™ <small>$20k</small>'),'hackback',{},'sm',S.cash<20000)}</div>
+    ${haulLine?`<div class="meta">${haulLine}</div>`:''}
+    <div class="meta">${m.leak>1e-6?'~ '+tr('{g} is leaking through',{g:fmtG(m.leak)}):'✓ '+tr('Attack fully mitigated')}</div>`}
+    <div class="btns">${m.blackhole?btn(tr('Stop blackholing'),'unrtbh',{id:a.id},'ghost sm'):btn(tr('Blackhole the target (RTBH)'),'rtbh',{id:a.id},'red sm')}${ddosHasIx(a)&&!m.blackhole?btn(a.ixbh?tr('IX blackhole on ✓'):tr('IX blackhole <small>~half honour it</small>'),'ixbh',{id:a.id},a.ixbh?'green sm':'sm'):''}${btn(tr('HackBack 3000™ <small>$20k</small>'),'hackback',{id:a.id},'sm',S.cash<20000)}</div>
     <p class="meta">${tr('RTBH is free and instant, but it drops everything to the victim, attack and customer alike. An IX blackhole keeps the customer up but only about half the members honour it. HackBack 3000™ by Skynot AI sometimes ends it, and sometimes flattens an innocent and earns you a fine.')}</p></div>`;
   return h;}
 function fireFailure(){
@@ -2817,7 +2854,7 @@ function fireFailure(){
   if(S.transit.some(t=>!(t.down>S.day)))opts.push(['transit',3]);
   if(Object.keys(S.ixp).length)opts.push(['ixloop',2]);
   if(S.transit.length&&S.day>60)opts.push(['leak',2]);
-  if(S.day>40&&!scnRule('ddos'))opts.push(['ddos',2]); // Flood Season brings its own
+  // DDoS has its own schedule, so other incidents cannot bypass the weekly limit.
   if(fabsUsed.length)opts.push(['fabric',1.5]);
   const lit=S.links.filter(l=>l.kind==='df'&&dfCap(l)>0&&!linkDown(l));if(lit.length)opts.push(['amp',1.5+lit.length*0.3],['optic',1.5+lit.length*0.3]);
   opts.push(['funny',4]);
@@ -2921,27 +2958,49 @@ function fireFailure(){
   else{const paused=pref('pauseIncident')&&autoPause();toast(`<b>${incTitle(type)}</b><br>${esc(last.msg)}${paused?`<br><b>${tr('Game paused.')}</b>`:''}`,'bad',(last.cost?[{l:`${last.fix||tr('Rush repair')} ${fmt$(last.cost)}`,act:'fixInc',args:{id:last.id}}]:[]).concat(paused?[resumeAct()]:[]),incOpen(last));}
   sfx('alert');
 }
-// A DDoS attack: mostly short, modest spikes; now and then a "botnet of toasters" monster into the terabits.
-// In Flood Season (scenario rule ddos) they come more often, a third are monsters, and they grow over the year.
-function ddosAttack(){const type='ddos',fl=scnRule('ddos'),grow=fl?1+S.day/180:1;if(S.ev.ddos&&S.ev.ddos.until>S.day)ddosDone(S.ev.ddos);
-    const c=pick(Object.keys(S.pops)),vec=pick(Object.keys(DDOS_VEC)),V=DDOS_VEC[vec];
-    const monster=Math.random()<(fl?0.33:0.15),base=Math.max(R.cityDem[c]||0,4);
-    const gbps=Math.round((monster?800+Math.random()*2600:2+Math.random()*Math.max(18,base*0.9))*grow);
-    const dur=2+Math.floor(Math.random()*4),entry=ddosEntry(c);
-    S.ev.ddos={city:c,vec,gbps,until:S.day+dur,entry,bh:false,start:S.day};
+const gamingCount=()=>S.biz.reduce((n,b)=>n+(BIZ_T[b.type]?.gaming?1:0),0);
+const ddosVectors=()=>Object.keys(DDOS_VEC).filter(k=>!DDOS_VEC[k].gaming||gamingCount()>0);
+// Expected starts per week in normal play; the rolling 14-start limit is a separate ceiling.
+// Spread gaming exposure over dozens of customers, including the first, rather than switching baselines.
+const ddosRate=()=>0.5+6.5*(1-Math.exp(-gamingCount()/50*(1+Math.max(1,S.lvl||1)/LEVELS.length)));
+const ddosPressure=()=>1-Math.exp(-(.01+Math.max(0,(S.lvl||1)-1)/12+gamingCount()/10+(scnRule('ddos')?.2+S.day/365:0)));
+// Normalize the vector mix so smaller gaming-only floods do not lower the advertised overall mean.
+function ddosSizeMean(){const stage=Math.max(1,S.lvl||1)/LEVELS.length,games=gamingCount(),fl=scnRule('ddos');
+  const base=Math.max(10,(R.demand||0)*4/3*stage,fl?1400:0);
+  if(fl)return base*(1+0.2*games/(games+10))*(1+S.day/365);
+  // Relative to no gaming: 3x at one customer, 8x at 50, approaching the existing 12x balance.
+  const mean=base*(games?1.2-0.9*Math.pow(4/9,(games-1)/49):0.1),vectors=ddosVectors(),weight=vectors.reduce((n,k)=>n+(DDOS_VEC[k].gaming?1/3:1),0)/vectors.length;
+  return mean/weight;}
+// Normal rolls: 98% uniform 0.2–2, 2% uniform 8–12. Their mean is 1.278, so spikes do not inflate the balance.
+const ddosSizeMax=()=>ddosSizeMean()*(scnRule('ddos')?1.5:12/1.278);
+function ddosSize(vec){const fl=scnRule('ddos'),r=Math.random(),roll=fl?1/3+r*2/3:(r<.98?.2+1.8*r/.98:8+4*(r-.98)/.02)/12;
+  const raw=ddosSizeMax()*(DDOS_VEC[vec].gaming?1/3:1)*roll;
+  return fl?Math.max(2,Math.floor(raw)):Math.max(0.001,Math.floor(raw*1000)/1000);}
+function ddosTick(){if(S.mode==='sandbox')return;if(scnRule('ddos')){let next=+S.scn.nextDdos||3,n=0;
+    while(S.day>=next&&n++<2){ddosAttack(false);next+=floodGap();}S.scn.nextDdos=next<S.day?S.day+floodGap():next;}
+  else if(S.day>40||gamingCount())for(let i=0;i<2;i++)if(Math.random()<ddosRate()/14)ddosAttack(false);}
+// Size, duration and starts are randomized independently; overlapping floods never replace each other.
+function ddosAttack(recompute=true){const type='ddos',fl=scnRule('ddos');ddosExpire();
+    S.ddosStarts=(S.ddosStarts||[]).filter(d=>d>S.day-7&&d<=S.day);if(S.ddosStarts.length>=14||!Object.keys(S.pops).length)return;S.ddosStarts.push(S.day);
+    const c=pick(Object.keys(S.pops)),vec=pick(ddosVectors()),V=DDOS_VEC[vec];
+    const gbps=ddosSize(vec);
+    const dur=1+Math.floor(Math.random()*(1+6*ddosPressure())),entry=ddosEntry(c);
+    const entries=ddosEntries(),a={id:uid(),city:c,vec,gbps,until:S.day+dur,entry:entries.length>1?{k:'distributed',lab:tr('Distributed ingress')}:entries[0]||entry,entries,bh:false,start:S.day};
+    if(!S.ev.ddos)S.ev.ddos=a;else(S.ev.ddosMore||(S.ev.ddosMore=[])).push(a);
     const soaked=(V.fs&&fsAt(c))||hasScrub();
-    const how=entry&&entry.lab?tr(', in via {e}',{e:entry.lab}):'';
+    const how=entries.length>1?tr(', across {n} transit and peering ports',{n:entries.length}):entry&&entry.lab?tr(', in via {e}',{e:entry.lab}):'';
     const msg=tr('A {size} {vec} attack is hitting {city}{how}.',{size:fmtG(gbps),vec:V.n,city:CITY[c].name,how})+' '+(soaked?tr('Your mitigation is eating most of it.'):tr('Junk traffic is eating your capacity. Open the NOC to fight back.'));
-    if(fl)S.ev.ddos.who=pick(FLOOD_WHO);
-    addInc({type,ref:c,until:S.day+dur,msg:fl?msg+' '+tr('Attacker: {who}.',{who:tr(S.ev.ddos.who)}):msg,cost:0});
+    if(fl)a.who=pick(FLOOD_WHO);
+    addInc({type,ref:c,atk:a.id,until:S.day+dur,msg:fl?msg+' '+tr('Attacker: {who}.',{who:tr(a.who)}):msg,cost:0});
     if(soaked){S.stats.survived++;S.stats.ddosHeld=(S.stats.ddosHeld||0)+1;if(gbps>=1000)S.stats.ddosMonster=(S.stats.ddosMonster||0)+1;}
-    compute();
-    toast(`<b>${incTitle('ddos')}: ${esc(CITY[c].name)}</b><br>${esc(msg)}${fl?`<br><i>${esc(tr('Attacker: {who}.',{who:tr(S.ev.ddos.who)}))}</i>`:''}`,soaked?'goal':'bad',[{l:tr('Open NOC'),act:'leftTab',args:{t:'noc'}}],{a:'city',v:c});
+    if(recompute){compute();a.worst=ddosSf(a);}
+    toast(`<b>${incTitle('ddos')}: ${esc(CITY[c].name)}</b><br>${esc(msg)}${fl?`<br><i>${esc(tr('Attacker: {who}.',{who:tr(a.who)}))}</i>`:''}`,soaked?'goal':'bad',[{l:tr('Open NOC'),act:'leftTab',args:{t:'noc'}}],{a:'city',v:c});
     sfx('alert');}
 // When an attack is over: was it held? Held means the city under attack got at least 97% of its traffic every day.
-function ddosDone(a){if(!a||a.done)return;a.done=1;if(a.worst===undefined&&S.pops[a.city])a.worst=sfOf(R,a.city);const ok=(a.worst===undefined?1:a.worst)>=0.97;
+function ddosDone(a){if(!a||a.done)return;a.done=1;if(a.worst===undefined&&S.pops[a.city])a.worst=ddosSf(a);const ok=(a.worst===undefined?1:a.worst)>=0.97;
   if(ok){S.stats.ddosOk=(S.stats.ddosOk||0)+1;if(a.gbps>=1000)S.stats.ddosOkBig=(S.stats.ddosOkBig||0)+1;}else S.stats.ddosLost=(S.stats.ddosLost||0)+1;
   if(scnRule('ddos')){const who=tr(a.who||FLOOD_WHO[0]);toast(ok?tr('<b>Flood held: {g}.</b><br>{who} gave up and went back to mining crypto.',{g:fmtG(a.gbps),who:who.charAt(0).toUpperCase()+who.slice(1)}):tr('<b>That one got through: {g}.</b><br>{city} sank to {p}. Somewhere, {who} is very proud of itself.',{g:fmtG(a.gbps),city:CITY[a.city]?CITY[a.city].name:tr('Your network'),p:pct(a.worst||0),who}),ok?'goal':'bad');}}
+const floodGap=()=>Math.max(0.05,(3+Math.random()*5)/(Math.sqrt(1+S.day/180)*(1+gamingCount()/10+Math.max(0,(S.lvl||1)-1)/12)));
 const FLOOD_WHO=[N_('a botnet of 40,000 smart toasters'),N_('every unpatched baby monitor in Europe'),N_('a gaming clan that lost one match'),N_('a fridge that achieved sentience and chose violence'),N_('a crypto bro shorting your stock'),N_('a teenager with a stolen credit card and a grudge'),N_('a rival ISP’s “stress test”'),N_('ten thousand smart light bulbs, blinking in unison'),N_('a printer. Just one printer. Nobody knows how'),N_('a botnet run from a cloud you also host'),N_('somebody who did not like your network name'),N_('the internet-connected kettles of a whole country')];
 function incTitle(t){return {ring:tr('Metro ring cut'),site:tr('Site outage'),cut:tr('Fiber cut'),crash:tr('Router crash'),power:tr('Power outage'),transit:tr('Upstream outage'),ixloop:tr('IX meltdown'),leak:tr('Route leak'),ddos:tr('DDoS attack'),fabric:tr('Fabric outage'),depeer:tr('Peering spat'),fatwave:tr('Fat-fingered wave'),label:tr('Patch panel mishap'),mtu:tr('MTU mismatch'),krroute:tr('Rerouted via Hong Kong'),ctrlplane:tr('Control plane meltdown'),lacp:tr('LACP trouble'),loss:tr('Packet loss'),pmtud:tr('PMTUD black hole'),oops:tr('Oops'),cleaner:tr('Vacuum incident'),maxpfx:tr('Max-prefix meltdown'),prepend:tr('Prepend-ageddon'),rpki:tr('RPKI invalid'),amp:tr('Amplifier failure'),roadmff:tr('Fat-fingered ROADM'),optic:tr('Dead optic'),maint:tr('Maintenance window'),ac:tr('Cooling failure'),hijack:tr('BGP hijack'),shutdown:tr('Government shutdown'),redsea:tr('Geopolitical cable cut')}[t]||tr('Incident');}
 const LINKCUT_TR=['cut','redsea'],LINKCUT_ID=['fatwave','label'],POPDOWN=['crash','power','oops','cleaner','maint','shutdown'],IXDOWN=['ixloop','maxpfx'],TDOWN=['transit','prepend'],LINKEQ=['mtu','amp','roadmff','optic'];
@@ -2956,7 +3015,7 @@ function clearInc(i){
   else if(TDOWN.includes(T)){const t=S.transit.find(x=>x.id===i.ref);if(t)t.down=remainUntil(x=>TDOWN.includes(x.type)&&x.ref===i.ref);}
   else if(T==='rpki'||T==='hijack'){if(!S.inc.some(x=>x.type==='rpki'||x.type==='hijack'))S.ev.rpki=null;}
   else if(T==='leak'){S.ev.leak=null;}
-  else if(T==='ddos'){const a=S.ev.ddos;if(a&&a.city===i.ref&&(a.start===undefined||a.start===i.start)){ddosDone(a);S.ev.ddos=null;}}
+  else if(T==='ddos'){const a=ddosAll(S,false).find(a=>i.atk?a.id===i.atk:a.city===i.ref&&(a.start===undefined||a.start===i.start));if(a){ddosDone(a);ddosDrop(a);}}
   else if(T==='fabric'){if(S.ev.fab)S.ev.fab[i.ref]=remainUntil(x=>x.type==='fabric'&&x.ref===i.ref);}
   else if(T==='mtu'){const l=S.links.find(x=>x.id===i.ref);if(l)l.deg=remainUntil(x=>x.type==='mtu'&&x.ref===i.ref);}
   else if(T==='loss'){const l=S.links.find(x=>x.id===i.ref);if(l&&!S.inc.some(x=>x.type==='loss'&&x.ref===i.ref))l.loss=null;}
@@ -3034,8 +3093,9 @@ function dayTick(){
   if(R&&R.teMoved)S.stats.teMax=Math.max(S.stats.teMax||0,R.teMoved);
   {const t1=!!S.won&&isTier1();if(S.t1Now&&!t1)toast(tr('<b>You are no longer Tier 1.</b><br>Because {why}. Your Tier 1 badge stays; win the status back to show it again.',{why:t1Why()}),'bad');S.t1Now=t1;}
   if(S.grace&&S.grace.until===d){toast(tr('<b>The courtesy route has ended.</b><br>New networks you have not connected to are now only reachable through your own peering and transit.'),'bad',[{l:tr('Open NOC'),act:'leftTab',args:{t:'noc'}}]);}
-  {const a=S.ev.ddos;if(a&&a.until>d&&R&&S.pops[a.city])a.worst=Math.min(a.worst===undefined?1:a.worst,sfOf(R,a.city));}
-  if(scnRule('ddos')&&!(S.scn.done||S.scn.failed)&&d>=(+S.scn.nextDdos||3)&&!(S.ev.ddos&&S.ev.ddos.until>d)){ddosAttack();S.scn.nextDdos=d+3+Math.floor(Math.random()*5);}
+  for(const a of ddosAll(S,false))if(a.until>=d&&R&&S.pops[a.city])a.worst=Math.min(a.worst===undefined?1:a.worst,ddosSf(a));
+  ddosExpire();
+  ddosTick();
   if(R&&R.demand>0)S.stats.clean=R.served/R.demand>=0.995?(S.stats.clean||0)+1:0;
   if(S.scn&&S.scn.id==='redsea')S.stats.asiaRun=asiaG()>=RS_G?(S.stats.asiaRun||0)+1:0;
   if(S.ev.php===d)toast(tr('<b>The internet is back.</b><br>Half of it, anyway. Everything was patched in a hurry and nobody learned anything.'),'good');
@@ -3050,6 +3110,7 @@ function dayTick(){
     if(sf>=0.9){const g=(CITY[c].be&&!(p.boost>d)?0.35:1)*0.025*(scnRule('boom')?1.5:1)*(p.boost>d?2:1)*sf*(0.7+0.6*(R.peerShare||0))*(CITY[c].reg==='AS'&&!CITY[c].cn?1.6:1);p.bb.d+=g*p.bb.d*(1-p.bb.d/P);}
     else p.bb.d=Math.max(Math.min(3,P),p.bb.d*(1-(0.9-sf)*0.04));}
   compute();
+  for(const a of ddosAll())a.worst=Math.min(a.worst??1,ddosSf(a));
   for(const t of S.transit){(t.hist=t.hist||[]).push(R.useT[t.id]||0);if(t.hist.length>30)t.hist.shift();}
   S.cash+=(R.revMo-R.costMo)/30;
   S.stats.peak=Math.max(S.stats.peak,R.served);
@@ -3059,9 +3120,9 @@ function dayTick(){
     if(l.ready===d){toast(`<b>${l.own?tr('Your fiber is finished: {a}–{b}',{a:CITY[l.a].name,b:CITY[l.b].name}):tr('Dark fiber handed over: {a}–{b}',{a:CITY[l.a].name,b:CITY[l.b].name})}</b><br>${(l.ch||[]).length?tr('Channels are lighting up now.'):tr('It is dark. Add optics to light it up.')}`,'goal',[{l:tr('Open'),act:'selLink',args:{id:l.id}}]);sfx('coin');}
     if(l.own&&l.ready>d&&Math.random()<0.012){const extra=10+Math.floor(Math.random()*40);setCableReady(l,l.ready+extra);toast(tr('<b>Construction delay: +{n} days</b><br>{why} ({a}–{b})',{n:extra,why:pick(l.sub?SEA_DELAYS.map(x=>tr(x)):[tr('Archaeologists found a Roman bathhouse on your route.'),tr('A protected hamster species lives along the right-of-way.'),tr('The railway changed its mind about the easement.'),tr('The drilling crew hit a granite boulder the size of a bus.'),tr('A town council wants a public hearing. About the color of the manhole covers.'),tr('Somebody else’s gas main was exactly where the map said it was not.'),tr('The permit office lost your permit. And then the replacement.')]),a:CITY[l.a].name,b:CITY[l.b].name}),'bad');}}
   // DDoS protection SLA: if a protected customer's own city is hit and still goes down, you pay out (once per attack).
-  if(S.ev.ddos&&S.ev.ddos.until>d){const a=S.ev.ddos;
-    for(const b of S.biz)if(b.type==='scrub'&&b.city===a.city&&b.slaFor!==a.start&&sfOf(R,b.city)<0.85){
-      b.slaFor=a.start;S.cash-=SLA_PEN;b.mood=Math.max(0,b.mood-18);S.stats.sla=(S.stats.sla||0)+1;
+  for(const a of ddosAll()){
+    for(const b of S.biz)if(b.type==='scrub'&&ddosCities(a).includes(b.city)&&!(a.sla||[]).includes(b.id)&&(a.id||b.slaFor!==a.start)&&sfOf(R,b.city)<0.85){
+      (a.sla||(a.sla=[])).push(b.id);b.slaFor=a.start;S.cash-=SLA_PEN;b.mood=Math.max(0,b.mood-18);S.stats.sla=(S.stats.sla||0)+1;
       toast(tr('<b>SLA breach: {name}.</b><br>The attack on {city} got through and your protected customer went down. You owe {pen} in SLA credits.',{name:esc(b.name),city:CITY[a.city].name,pen:fmt$(SLA_PEN)}),'bad');sfx('err');}}
   // businesses mood
   for(const b of S.biz.slice()){if(eventTick(b,d))continue;b.pm=b.mood;const sf=bizSf(b),reachOk=BIZ_T[b.type].l2||BIZ_T[b.type].fiber||R.reach>0.99||scnRule('local'),scrubOk=b.type!=='scrub'||(hasScrub()&&!scrubFar(b.city)),divOk=reqOk(b);
@@ -3425,10 +3486,10 @@ const ACT={
  rmScrub:({city})=>{if(!S.scrubs.some(x=>x.city===city))return;if(UI.confirm!=='scrub:'+city){UI.confirm='scrub:'+city;renderAll();return;}S.scrubs=S.scrubs.filter(x=>x.city!==city);if(!hasScrub())S.scrubMode='always';UI.confirm=null;after();},
  cleanPipe:({id})=>{const t=S.transit.find(x=>x.id===id);if(!t)return;t.clean=!t.clean;toast(t.clean?tr('<b>Clean-pipe add-on enabled on {net}.</b><br>They scrub a flood before it reaches your port here, for {mo}/mo.',{net:NET[t.net].name,mo:fmt$(cleanMo(t))}):tr('<b>Clean-pipe add-on removed from {net}.</b>',{net:NET[t.net].name}),t.clean?'good':'');after();},
  sacrif:({id})=>{const p=S.pni.find(x=>x.id===id);if(!p)return;p.sacrif=!p.sacrif;toast(p.sacrif?tr('<b>{net} PNI is now a sacrificial choke point.</b><br>A flood from there dies on the small port instead of inside your network, but legit traffic over it runs at half capacity.',{net:NET[p.net].name}):tr('<b>{net} PNI is back to normal.</b>',{net:NET[p.net].name}),p.sacrif?'good':'');after();},
- ixbh:()=>{const a=S.ev.ddos;if(!a){toast(tr('<b>No attack to blackhole right now.</b>'),'');return;}if(!hasIxAt(a.city)){toast(tr('<b>No IX in {city} to announce a blackhole to.</b>',{city:CITY[a.city].name}),'bad');sfx('err');return;}a.ixbh=!a.ixbh;toast(a.ixbh?tr('<b>IX blackhole announced in {city}.</b><br>About half the members honour the /32 and drop the junk. The customer stays up.',{city:CITY[a.city].name}):tr('<b>IX blackhole withdrawn.</b>'),a.ixbh?'good':'');sfx('alert');after();},
- rtbh:()=>{const a=S.ev.ddos;if(!a){toast(tr('<b>No attack to blackhole right now.</b>'),'');return;}a.bh=true;S.stats.rtbh=(S.stats.rtbh||0)+1;toast(tr('<b>RTBH announced.</b><br>You blackholed the target in {city}. The flood stops, and so does everyone there.',{city:CITY[a.city].name}),'bad');sfx('alert');after();},
- unrtbh:()=>{const a=S.ev.ddos;if(!a||!a.bh)return;a.bh=false;toast(tr('<b>Blackhole withdrawn.</b><br>{city} is reachable again. Brace for the junk.',{city:CITY[a.city].name}),'');after();},
- hackback:()=>{const a=S.ev.ddos;if(!a||a.until<=S.day){toast(tr('<b>Nothing to hack back right now.</b>'),'');return;}if(!spend(20000))return;S.stats.hackback=(S.stats.hackback||0)+1;
+ ixbh:({id}={})=>{const a=ddosFind(id);if(!a){toast(tr('<b>No attack to blackhole right now.</b>'),'');return;}if(!ddosHasIx(a)){toast(tr('<b>No IX in {city} to announce a blackhole to.</b>',{city:CITY[a.city].name}),'bad');sfx('err');return;}a.ixbh=!a.ixbh;toast(a.ixbh?tr('<b>IX blackhole announced in {city}.</b><br>About half the members honour the /32 and drop the junk. The customer stays up.',{city:ddosCities(a).filter(hasIxAt).map(c=>CITY[c].name).join(', ')}):tr('<b>IX blackhole withdrawn.</b>'),a.ixbh?'good':'');sfx('alert');after();},
+ rtbh:({id}={})=>{const a=ddosFind(id);if(!a){toast(tr('<b>No attack to blackhole right now.</b>'),'');return;}a.bh=true;S.stats.rtbh=(S.stats.rtbh||0)+1;toast(tr('<b>RTBH announced.</b><br>You blackholed the target in {city}. The flood stops, and so does everyone there.',{city:CITY[a.city].name}),'bad');sfx('alert');after();},
+ unrtbh:({id}={})=>{const a=ddosFind(id);if(!a)return;for(const x of ddosAll())if(x.city===a.city)x.bh=false;toast(tr('<b>Blackhole withdrawn.</b><br>{city} is reachable again. Brace for the junk.',{city:CITY[a.city].name}),'');after();},
+ hackback:({id}={})=>{const a=ddosFind(id);if(!a||a.until<=S.day){toast(tr('<b>Nothing to hack back right now.</b>'),'');return;}if(!spend(20000))return;S.stats.hackback=(S.stats.hackback||0)+1;
    if(Math.random()<0.35){a.until=S.day;a.bh=false;S.stats.hackWin=(S.stats.hackWin||0)+1;toast(tr('<b>HackBack 3000™ strikes back!</b><br>Skynot AI traced the botnet and politely bricked it. The attack on {city} stops cold.',{city:CITY[a.city].name}),'goal');sfx('coin');}
    else{const fine=15000+Math.floor(Math.random()*35000);S.cash-=fine;S.stats.vigilante=(S.stats.vigilante||0)+1;
      toast(tr('<b>HackBack 3000™ hit the wrong target.</b><br>{who} A regulator sends you a {fine} fine, and the attack rolls on.',{who:pick([tr("Skynot AI flattened a grandma's internet-connected fridge."),tr('You counter-flooded a hospital in a country you cannot pronounce.'),tr('The botnet was already someone else’s botnet. They are furious.')]),fine:fmt$(fine)}),'bad');sfx('err');}
@@ -3697,7 +3758,7 @@ function renderLeft(){checkLayer();
     {const lv=S.lvl||1,nx=LEVELS[lv];h+=`<div class="inc" style="background:#FFF6CF"><div class="nm">${tr('Customer level {lv}: {name}',{lv,name:LEVELS[lv-1].n})}</div><div class="meta">${nx?tr('Next: {req} unlocks {what}',{req:nx.req,what:lc1(nx.unlock)}):tr('Every customer type is unlocked. Go get those terabits.')}</div></div>`;}
     if(!S.offers.length)h+=`<p class="empty">${tr('No open offers right now. Businesses look for networks with POPs in their city. New ones pop up every few weeks.')}</p>`;
     for(const o of S.offers.slice().sort((a,b)=>a.exp-b.exp)){const has=bHas(o);
-      h+=`<div class="row"><div class="grow"><div class="nm">${esc(o.name)}</div><div class="meta">${esc(BIZ_T[o.type].l)} · ${CITY[o.city].name}${o.city2?' ⇄ '+CITY[o.city2].name:''} · <b>${bTerms(o)}</b> · ${tr('{n}d left',{n:o.exp-S.day})}${(o.reqs||[]).length?` · ${trn('{n} special requirement','{n} special requirements',o.reqs.length)}`:''}</div>${reqList(o)}
+      h+=`<div class="row"><div class="grow"><div class="nm">${esc(o.name)}</div><div class="meta">${esc(BIZ_T[o.type].l)} · ${CITY[o.city].name}${o.city2?' ⇄ '+CITY[o.city2].name:''} · <b>${bTerms(o)}</b> · ${tr('{n}d left',{n:o.exp-S.day})}${(o.reqs||[]).length?` · ${trn('{n} special requirement','{n} special requirements',o.reqs.length)}`:''}</div>${bRisk(o)}${reqList(o)}
       <div class="btns">${has?btn(tr('Accept'),'accept',{id:o.id},'green sm'):btn(tr('Go there'),'focusCity',{city:bCities(o).find(c=>!S.pops[c])},'ghost sm')}${btn(tr('Decline'),'decline',{id:o.id},'ghost sm')}</div>${has?'':`<div class="why">${tr('Needs a POP in {cities}',{cities:bCities(o).filter(x=>!S.pops[x]).map(x=>CITY[x].name).join(', ')})}</div>`}</div></div>`;}
   }else if(UI.left==='noc'){
     h+=`<div class="btns" style="margin-bottom:8px">${btn(tr('Open NOC dashboard'),'dash',{},'pink')}${btn(tr('Connections'),'connOpen',{},'')}${btn(tr('Traceroute'),'trace',{},'')}</div>`;
@@ -3781,7 +3842,7 @@ function cityPanel(c){
     h+=`</section><section><h3>${tr('Business customers')}</h3>`;
     const bz=S.biz.filter(b=>bCities(b).includes(c));
     if(!bz.length)h+=`<p class="empty">${tr('No businesses yet. Offers pop up as $ bubbles on the map.')}</p>`;
-    for(const b of bz)h+=`<div class="row"><div class="grow"><div class="nm">${esc(b.name)}</div><div class="meta">${esc(BIZ_T[b.type].l)}${b.city2?` ${CITY[b.city].name} ⇄ ${CITY[b.city2].name}`:''} · ${bTerms(b)}${BIZ_T[b.type].l2?` · ${b.sites?tr('carrying {g} per site',{g:fmtG(R.l2[b.id]||0)}):tr('carrying {g}',{g:fmtG(R.l2[b.id]||0)})}`:''}${BIZ_T[b.type].fiber&&!fiberOk(b)?' · <b style="color:var(--bad)">'+tr('fiber is down')+'</b>':''}${BIZ_T[b.type].event&&eventLive(b)?` · <b>${tr('serving {v}',{v:pct(sfOf(R,b.city))})}</b>`:''}${b.type==='scrub'&&!hasScrub()?' · <b style="color:var(--bad)">'+tr('needs a scrubbing center')+'</b>':''}${S.day-(b.since||0)<15?` · <b>${tr('provisioning, {n}d grace',{n:15-(S.day-(b.since||0))})}</b>`:''}</div>${reqList(b)}${BIZ_T[b.type].l2?routeCtl(b):''}<div class="bar ${b.mood<30?'bad':b.mood<65?'warn':''}"><i style="width:${b.mood}%"></i></div><div class="meta">${tr('Happiness {p}%',{p:Math.round(b.mood)})}</div></div>${btn(UI.confirm===b.id?tr('Really drop?'):tr('Drop'),'dropBiz',{id:b.id},'ghost sm')}</div>`;
+    for(const b of bz)h+=`<div class="row"><div class="grow"><div class="nm">${esc(b.name)}</div><div class="meta">${esc(BIZ_T[b.type].l)}${b.city2?` ${CITY[b.city].name} ⇄ ${CITY[b.city2].name}`:''} · ${bTerms(b)}${BIZ_T[b.type].l2?` · ${b.sites?tr('carrying {g} per site',{g:fmtG(R.l2[b.id]||0)}):tr('carrying {g}',{g:fmtG(R.l2[b.id]||0)})}`:''}${BIZ_T[b.type].fiber&&!fiberOk(b)?' · <b style="color:var(--bad)">'+tr('fiber is down')+'</b>':''}${BIZ_T[b.type].event&&eventLive(b)?` · <b>${tr('serving {v}',{v:pct(sfOf(R,b.city))})}</b>`:''}${b.type==='scrub'&&!hasScrub()?' · <b style="color:var(--bad)">'+tr('needs a scrubbing center')+'</b>':''}${S.day-(b.since||0)<15?` · <b>${tr('provisioning, {n}d grace',{n:15-(S.day-(b.since||0))})}</b>`:''}</div>${bRisk(b)}${reqList(b)}${BIZ_T[b.type].l2?routeCtl(b):''}<div class="bar ${b.mood<30?'bad':b.mood<65?'warn':''}"><i style="width:${b.mood}%"></i></div><div class="meta">${tr('Happiness {p}%',{p:Math.round(b.mood)})}</div></div>${btn(UI.confirm===b.id?tr('Really drop?'):tr('Drop'),'dropBiz',{id:b.id},'ghost sm')}</div>`;
     h+=`</section>`+offersHere(c);
   }else if(UI.tab==='up'){
     h+=portNote(c)+latNote(c);
@@ -3973,7 +4034,7 @@ function dfPanel(l){
 }
 function offersHere(c){
   const os=S.offers.filter(o=>bCities(o).includes(c));if(!os.length)return '';
-  return `<section><h3>${tr('Offers here')}</h3>${os.map(o=>`<div class="row"><div class="grow"><div class="nm">${esc(o.name)}</div><div class="meta">${esc(BIZ_T[o.type].l)}${o.city2?` ${CITY[o.city].name} ⇄ ${CITY[o.city2].name}`:''} · ${bTerms(o)} · ${tr('{n}d left',{n:o.exp-S.day})}</div>${R.reach<0.99&&!BIZ_T[o.type].l2?`<div class="why">${tr('They need the full internet. Your reach is {pct}.',{pct:pct(R.reach)})}</div>`:''}${o.type==='scrub'&&!hasScrub()?`<div class="why">${tr('Needs your own scrubbing center (Infra tab).')}</div>`:''}${reqList(o)}${bHas(o)?'':`<div class="why">${tr('Needs a POP in {cities} too.',{cities:bCities(o).filter(x=>!S.pops[x]).map(x=>CITY[x].name).join(', ')})}</div>`}</div>${bHas(o)?btn(tr('Accept'),'accept',{id:o.id},'green sm'):''}${btn(tr('No'),'decline',{id:o.id},'ghost sm')}</div>`).join('')}</section>`;
+  return `<section><h3>${tr('Offers here')}</h3>${os.map(o=>`<div class="row"><div class="grow"><div class="nm">${esc(o.name)}</div><div class="meta">${esc(BIZ_T[o.type].l)}${o.city2?` ${CITY[o.city].name} ⇄ ${CITY[o.city2].name}`:''} · ${bTerms(o)} · ${tr('{n}d left',{n:o.exp-S.day})}</div>${R.reach<0.99&&!BIZ_T[o.type].l2?`<div class="why">${tr('They need the full internet. Your reach is {pct}.',{pct:pct(R.reach)})}</div>`:''}${o.type==='scrub'&&!hasScrub()?`<div class="why">${tr('Needs your own scrubbing center (Infra tab).')}</div>`:''}${bRisk(o)}${reqList(o)}${bHas(o)?'':`<div class="why">${tr('Needs a POP in {cities} too.',{cities:bCities(o).filter(x=>!S.pops[x]).map(x=>CITY[x].name).join(', ')})}</div>`}</div>${bHas(o)?btn(tr('Accept'),'accept',{id:o.id},'green sm'):''}${btn(tr('No'),'decline',{id:o.id},'ghost sm')}</div>`).join('')}</section>`;
 }
 function linkPanel(id){
   const l=S.links.find(x=>x.id===id);if(!l){UI.sel=null;return '';}
@@ -4031,8 +4092,8 @@ const SCN_PROG={stg:()=>[{l:tr('Reach'),v:R.reach,max:0.45,txt:`${pct(R.reach)} 
   darien:()=>[...['bog','lim','scl','sao'].map(c=>pChk(tr('POP in {city}',{city:CITY[c].name}),!!S.pops[c])),pSrv(150)],
   gangnam:()=>[pReach(),pSrv(200)],
   fttb:()=>[...AU_BB.map(c=>pChk(tr('Broadband in {city}',{city:CITY[c].name}),!!(S.pops[c]&&S.pops[c].bb))),{l:tr('Cables overseas'),v:Math.min(2,auExits()),max:2,txt:`${auExits()} / 2`}],
-  flood:()=>{const ok=S.stats.ddosOk||0,big=S.stats.ddosOkBig||0,a=S.ev.ddos&&S.ev.ddos.until>S.day?S.ev.ddos:null;
-    return [{l:tr('Floods held'),v:ok,max:20,txt:`${ok} / 20`},{l:tr('Terabit floods held'),v:big,max:5,txt:`${big} / 5`},{l:tr('Floods that got through'),v:0,max:0,txt:String(S.stats.ddosLost||0)}].concat(a?[{l:tr('Under attack now'),v:0,max:0,txt:`${fmtG(a.gbps)} · ${CITY[a.city].name} · ${pct(a.worst===undefined?1:a.worst)}`}]:[]);},baltic:()=>[{l:tr('Days in a row with 99.5% served'),v:S.stats.clean||0,max:90,txt:tr('{n} of {m}',{n:S.stats.clean||0,m:90})}]};
+  flood:()=>{const ok=S.stats.ddosOk||0,big=S.stats.ddosOkBig||0,attacks=ddosAll();
+    return [{l:tr('Floods held'),v:ok,max:20,txt:`${ok} / 20`},{l:tr('Terabit floods held'),v:big,max:5,txt:`${big} / 5`},{l:tr('Floods that got through'),v:0,max:0,txt:String(S.stats.ddosLost||0)}].concat(attacks.map(a=>({l:tr('Under attack now'),v:0,max:0,txt:`${fmtG(a.gbps)} · ${CITY[a.city].name} · ${pct(a.worst===undefined?1:a.worst)}`})));},baltic:()=>[{l:tr('Days in a row with 99.5% served'),v:S.stats.clean||0,max:90,txt:tr('{n} of {m}',{n:S.stats.clean||0,m:90})}]};
 function scnProg(){const sc=S&&S.scn;if(!sc)return null;
   if(sc.id==='weekly')return {goal:tr('Serve as much traffic as you can in one year.'),items:[{l:tr('Your score: peak traffic'),v:0,max:0,txt:fmtG(S.stats.peak||0)}],f:Math.min(1,S.day/sc.days)};
   const def=SCN.find(x=>x.id===sc.id),fn=SCN_PROG[sc.id];if(!def)return null;let items=[];try{items=fn?fn():[];}catch(e){items=[];}
@@ -4110,7 +4171,7 @@ function custSection(){const F=UI.kf||{};let h=`<div class="panel2" id="custSec"
   const trend=b=>b.pm===undefined||Math.abs(b.mood-b.pm)<0.05?'':b.mood>b.pm?' <span style="color:var(--eye)">▲</span>':' <span style="color:var(--bad)">▼</span>';
   const sorts=[['mood',tr('Happiness')],['mo',tr('Per month')],['name',tr('Name')],['city',tr('Where')]];
   h+=`<div class="seg" style="margin-bottom:4px">${sorts.map(([k,l])=>btn(l+(sk===k?(dir>0?' ▲':' ▼'):''),'custSort',{k},sk===k?'pink sm':'ghost sm')).join('')}</div>`;
-  h+=rows.slice(0,listN('cust')).map(b=>{const why=bizWhy(b),grace=S.day-(b.since||0)<15;return `<div class="row"><div class="grow"><div class="nm">${esc(b.name)} <span class="meta">${esc(BIZ_T[b.type].l)}</span></div><div class="meta">${esc(where(b))} · ${BIZ_T[b.type].event?esc(bTerms(b)):tr('{price}/mo',{price:fmt$(bizMo(b))})}${grace?` · ${tr('provisioning, {n}d grace',{n:15-(S.day-(b.since||0))})}`:''}</div>${why.length?`<div class="why">${why.map(esc).join(' · ')}</div>`:''}<div class="bar ${moodCls(b.mood)}"><i style="width:${b.mood}%"></i></div><div class="meta">${tr('Happiness {p}%',{p:Math.round(b.mood)})}${trend(b)}</div></div>${btn(tr('Open'),'custGo',{id:b.id},'ghost sm')}</div>`;}).join('');
+  h+=rows.slice(0,listN('cust')).map(b=>{const why=bizWhy(b),grace=S.day-(b.since||0)<15;return `<div class="row"><div class="grow"><div class="nm">${esc(b.name)} <span class="meta">${esc(BIZ_T[b.type].l)}</span></div><div class="meta">${esc(where(b))} · ${BIZ_T[b.type].event?esc(bTerms(b)):tr('{price}/mo',{price:fmt$(bizMo(b))})}${grace?` · ${tr('provisioning, {n}d grace',{n:15-(S.day-(b.since||0))})}`:''}</div>${bRisk(b)}${why.length?`<div class="why">${why.map(esc).join(' · ')}</div>`:''}<div class="bar ${moodCls(b.mood)}"><i style="width:${b.mood}%"></i></div><div class="meta">${tr('Happiness {p}%',{p:Math.round(b.mood)})}${trend(b)}</div></div>${btn(tr('Open'),'custGo',{id:b.id},'ghost sm')}</div>`;}).join('');
   return h+listMore('cust',rows.length,n=>trn('+{n} more customer','+{n} more customers',n))+`</div>`;}
 /* ---------- connections overview (#31, #33, #38) ----------
    Every transit port, PNI, IX port, cache and fabric port in one list, filterable by type, city and
