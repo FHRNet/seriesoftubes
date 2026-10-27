@@ -17,6 +17,10 @@ All notable changes to this project are documented here. The project follows
 - DDoS bandwidth now adds up: upstream scrubbing, edge filters and scrubbing centers work in sequence. The NOC uses the same figures as traffic routing, including floods that cannot reach a remote center.
 - Attacks can now use Memcached amplification or an ACK flood. Flowspec catches the former; the latter need mitigation.
 
+## [1.34.1] — 2026-10-27
+
+- The game starts faster in Italian, Portuguese and French: their translations are about 40% smaller to download.
+
 ## [1.34.0] — 2026-10-27
 
 - Choose your peering policy: Open to all, Selective or Closed. Open accepts everyone and keeps the route servers, Selective means fewer requests but you ask peers yourself, and Closed scares customers away.
